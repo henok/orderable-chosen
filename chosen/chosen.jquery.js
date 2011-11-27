@@ -100,7 +100,71 @@
       this.set_up_html();
       this.register_observers();
       this.finish_setup();
+      if(this.allow_sortable){
+        var self = this;
+        $(form_field).next().find('.chzn-choices').sortable({
+          stop: function(event, ui) {
+            self.sort_options(ui.item);
+          }
+        });
+      }
     }
+
+    AbstractChosen.prototype.sort_options = function(moved) {
+      var search = $('.chzn-choices .search-field', this.container);
+      if(search.index() < moved.index()){
+        //got moved after search field, move it in front
+        search.before(moved);
+      }
+
+      //Move option also so it orders the result
+      var toindex = moved.index();
+      var html = moved.find('span').html();
+      var fromindex = $('option:contains("' + html + '")', this.form_field).index();
+      var options = $('option', this.form_field);
+      if(toindex > fromindex){
+        options.eq(toindex).after(options.eq(fromindex));
+      }else{
+        options.eq(toindex).before(options.eq(fromindex));
+      }
+
+      var results_data = [];
+      for(var i=0; i<this.form_field.options.length; i++){
+        var option = this.form_field.options[i];
+        var optionjq = $(option);
+        var html = optionjq.html();
+
+        // set the list options id correctly now.
+        var liitem = $('.chzn-results li:contains("' + html + '")', this.container);
+        var id = liitem.attr('id');
+        id = id.substr(0, id.lastIndexOf('_')) + '_' + i;
+        liitem.attr('id', id);
+
+        // re-add the items one-by-one
+        var item = {
+          array_index: i,
+          options_index: i,
+          value: option.value,
+          text: option.text,
+          html: option.innerHTML,
+          selected: option.selected,
+          disabled: false,
+          group_array_index: undefined
+        }
+        results_data.push(item);
+
+        // if it's selected, fix the selected item
+        if(option.selected){
+          var selitem = $('.chzn-choices li span:contains("' + html + '")', this.container).parent();
+          var id = selitem.attr('id');
+          id = id.substr(0, id.lastIndexOf('_')) + '_' + i;
+          selitem.attr('id', id);
+          selitem.find('a').attr('rel', i);
+        }
+      }
+      this.results_data = results_data;
+    };
+
     AbstractChosen.prototype.set_default_values = function() {
       this.click_test_action = __bind(function(evt) {
         return this.test_active_click(evt);
@@ -113,8 +177,10 @@
       this.results_showing = false;
       this.result_highlighted = null;
       this.result_single_selected = null;
-      this.allow_single_deselect = (this.options.allow_single_deselect != null) && (this.form_field.options[0] != null) && this.form_field.options[0].text === "" ? this.options.allow_single_deselect : false;
+      this.allow_single_deselect = (this.options.allow_single_deselect != null) && this.form_field.options[0].text === "" ? this.options.allow_single_deselect : false;
       this.disable_search_threshold = this.options.disable_search_threshold || 0;
+      this.allow_add_new = this.options.allow_add_new || false;
+      this.allow_sortable = this.options.allow_sortable || false;
       this.choices = 0;
       return this.results_none_found = this.options.no_results_text || "No results match";
     };
@@ -390,7 +456,7 @@
             }
             $(document).click(this.click_test_action);
             this.results_show();
-          } else if (!this.is_multiple && evt && (($(evt.target)[0] === this.selected_item[0]) || $(evt.target).parents("a.chzn-single").length)) {
+          } else if (!this.is_multiple && evt && ($(evt.target) === this.selected_item || $(evt.target).parents("a.chzn-single").length)) {
             evt.preventDefault();
             this.results_toggle();
           }
@@ -657,6 +723,26 @@
         this.search_field.val("");
         this.form_field_jq.trigger("change");
         return this.search_field_scale();
+      }else if(this.allow_add_new){
+        var val = this.search_container.find('input').val();
+        var option = $('<option value="' + val + '">' + val + '</option>')[0];
+        option.selected = true;
+        var item = {
+            array_index: this.results_data.length,
+            options_index: this.results_data.length,
+            value: option.value,
+            text: option.text,
+            html: option.innerHTML,
+            selected: option.selected,
+            disabled: false,
+            group_array_index: undefined
+        }
+        this.results_data.push(item);
+        $(this.form_field).append(option);
+
+        this.choice_build(item);
+        this.search_field.val("");
+        this.form_field_jq.trigger("change");
       }
     };
     Chosen.prototype.result_activate = function(el) {
@@ -725,7 +811,7 @@
               result.html(text);
               this.result_activate(result);
               if (option.group_array_index != null) {
-                $("#" + this.results_data[option.group_array_index].dom_id).css('display', 'list-item');
+                $("#" + this.results_data[option.group_array_index].dom_id).css('display', 'auto');
               }
             } else {
               if (this.result_highlight && result_id === this.result_highlight.attr('id')) {

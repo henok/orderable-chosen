@@ -2,8 +2,14 @@
 
 Chosen is a library for making long, unwieldy select boxes more user friendly.
 
+This fork adds support for ordering values in the widgets.
+
 - jQuery support: 1.4+
-- Prototype support: 1.7+
+- jQuery UI(draggable support)
+
+### Example
+
+jq('select').chosen({allow_sortable: true});
 
 For documentation, usage, and examples, see:  
 http://harvesthq.github.com/chosen
