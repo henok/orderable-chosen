@@ -466,10 +466,30 @@ class Chosen extends AbstractChosen
       this.result_do_highlight do_high if do_high?
 
   no_results: (terms) ->
-    no_results_html = $('<li class="no-results">' + @results_none_found + ' "<span></span>"</li>')
-    no_results_html.find("span").first().html(terms)
+    if @allow_dynamic_adding
+        new_record_input_field = '<input type="text" name="chzn_new_record" value="'+terms+'"/>&nbsp;'+
+                              '<input type="button" value="Add It" class="add_it_button"/>'
+        no_results_html = $('<li class="no-results">' + @results_none_found + ' - ' + new_record_input_field + '</li>')
+    
+    else 
+        no_results_html = $('<li class="no-results">' + @results_none_found + ' "<span></span>"</li>')
+        no_results_html.find("span").first().html(terms)
+    
 
     @search_results.append no_results_html
+
+    $('.add_it_button').bind 'click', (event) =>
+        new_record = $("#" + @container_id + " input:text[name=chzn_new_record]" ).val()
+        ## $(@container_id + ' ').val()
+        @add_new_item new_record
+
+  add_new_item: (new_record) ->
+    ## alert("adding new! "+new_record);
+    console.log("Adding new item... " + new_record);
+    console.log("@container_id : "+@container_id );
+    ## calling defined callback @container_id+"_add_btn"
+    add_func_name = eval(@container_id+"_add_btn")
+    add_func_name new_record
 
   no_results_clear: ->
     @search_results.find(".no-results").remove()
